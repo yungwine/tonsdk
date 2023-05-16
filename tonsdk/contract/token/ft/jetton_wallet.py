@@ -1,4 +1,4 @@
-
+from typing import Union
 
 from ... import Contract
 from ....boc import Cell
@@ -18,7 +18,7 @@ class JettonWallet(Contract):
             to_address: Address,
             jetton_amount: int,
             forward_amount: int = 0,
-            forward_payload: bytes = None,
+            forward_payload: Union[bytes, Cell, None] = None,
             response_address: Address = None,
             query_id: int = 0
     ) -> Cell:
@@ -30,9 +30,14 @@ class JettonWallet(Contract):
         cell.bits.write_address(response_address or to_address)
         cell.bits.write_bit(0)  # null custom_payload
         cell.bits.write_grams(forward_amount)
-        cell.bits.write_bit(0)  # forward_payload in this slice, not separate cell
-        if forward_payload:
-            cell.bits.write_bytes(forward_payload)
+
+        if isinstance(forward_payload, Cell):
+            cell.bits.write_bit(1)  # forward_payload is separate cell, so it stores in ref
+            cell.refs.append(forward_payload)
+        else:
+            cell.bits.write_bit(0)  # forward_payload in this slice, not separate cell
+            if isinstance(forward_payload, bytes):
+                cell.bits.write_bytes(forward_payload)
 
         return cell
 
